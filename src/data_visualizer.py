@@ -26,13 +26,17 @@ def plot_data_world(given_data):
     plt.savefig(os.path.join(save_image_path, 'countries_lat_lon_plot.png'))
 
 def plot_data_north_america(given_data):
-    geometry = [Point(xy) for xy in zip(given_data['longitude'], given_data['latitude'])]
+    fig, ax = plt.subplots(figsize=(8,6))
     countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
-    
+    countries[countries["name"] == "Germany"].plot(color = "lightgrey",
+                                                        ax = ax)
+    #given_data.plot(x = "longitude", y = "latitude", kind = "scatter")
+    plt.show()
 
 def main():
     given_data = parse_data(save_path)
-    plot_data_world(given_data)
+    #plot_data_world(given_data)
+    plot_data_north_america(given_data)
 
     print('test')
 
