@@ -50,6 +50,7 @@ def wind_est(metars_data, height, ref_height):
     plt.quiver(metars_data['longitude'], metars_data['latitude'], x_comp, y_comp, linewidth=widths)
     plt.savefig(os.path.join(save_image_path, 'vectors speci'))
     plt.show()
+    return wind_est_arr, wind_dir_arr, x_comp, y_comp
 
 
 def main():
