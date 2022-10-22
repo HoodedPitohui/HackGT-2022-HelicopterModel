@@ -15,11 +15,9 @@ def parse_data(given_path):
 
 def main():
     given_data = parse_data(save_path)
-    print('hello')
     plt.scatter(given_data['latitude'], given_data['longitude'])
     plt.show()
     plt.scatter(given_data['latitude'], given_data['altim_in_hg'])
-    print('test')
 
 
 if __name__ == "__main__":
