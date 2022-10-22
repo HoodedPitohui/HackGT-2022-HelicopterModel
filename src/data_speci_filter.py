@@ -23,6 +23,7 @@ def ifspeci(metars_data):
     plt.savefig(os.path.join(save_image_path, 'SPECI reports'))
     plt.show()
     print("test")
+    return latfilt, longfilt
 
 def main():
     given_data = parse_data(save_path)
