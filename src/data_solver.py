@@ -10,9 +10,12 @@ from geopandas import GeoDataFrame
 from scipy.interpolate import interp1d
 import heapq
 import pickle
+import urllib.request
+import csv
+
 
 #default save paths
-save_path = os.path.join("data")
+save_path = os.path.join("HackGT-2022-HelicopterModel")
 src_path = os.path.join("src")
 save_image_path = os.path.join("saved_figures")
 
@@ -56,11 +59,23 @@ def return_path(current_node):
 
 
 def parse_data(given_path):
+    # metars_path = os.path.join(given_path, 'metars.cache.csv')
+    data = []
+    with open('metars.cache.csv', 'r') as datafile:
+        reader = csv.reader(datafile, delimiter=',')
+        for row in reader:
+            data.append(row)
+    
+    # Get rid of the first few lines which are pointless
+    data = data[5:]
 
-    #load in data
-    file_name = 'metars_cache_1.csv'
-    metars_path = os.path.join(given_path, file_name)
-    metars_data = pd.read_csv(metars_path)
+    with open('metars.cache.csv', 'w') as processedFile:
+        writer = csv.writer(processedFile)
+        for row in data:
+            writer.writerow(row)
+
+    metars_data = pd.read_csv('metars.cache.csv')
+
     metars_data.sort_values('latitude')
     #sort by latitude
     return metars_data
@@ -349,6 +364,7 @@ def plot_user_final_path(given_data, path_data, given_lats, given_lons, save_nam
     x = 8
 
 def main():
+    urllib.request.urlretrieve("https://www.aviationweather.gov/adds/dataserver_current/current/metars.cache.csv", "metars.cache.csv")
     given_data = parse_data(save_path)
     #plot_data_world(given_data, 'initial_lat_lon.png')
 
