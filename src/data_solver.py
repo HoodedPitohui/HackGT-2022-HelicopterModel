@@ -12,11 +12,15 @@ import heapq
 import pickle
 import urllib.request
 import csv
+from scipy import stats
 
+
+pd.options.mode.chained_assignment = None 
 
 #default save paths
 save_path = os.path.join("HackGT-2022-HelicopterModel")
 src_path = os.path.join("src")
+map_path = os.path.join("maps")
 save_image_path = os.path.join("saved_figures")
 
 class Node:
@@ -79,6 +83,87 @@ def parse_data(given_path):
     metars_data.sort_values('latitude')
     #sort by latitude
     return metars_data
+
+def plot_map(df: pd.DataFrame, title: str, save_name: str, region: str=None, xtitle: str = None, ytitle: str = None,
+    color_var: str = None, cmap: str = None, elim_outliers: bool = False) -> None:
+    """
+    Takes in a subset of the data, applies relevant titles, and provides the option of visualizing variations in a 
+    particular quantity using a colorbar
+
+    ---
+
+    Notes about certain inputs:
+    region - a string that's supposed to be either "world" or "usa"
+    """
+    # If no region is specified, default to the world
+    if not region:
+        region = 'world'
+    
+    # Get the appropriate map file. This segment is inspired by https://towardsdatascience.com/easiest-way-to-plot-on-a-world-map-with-pandas-and-geopandas-325f6024949f
+    if region == 'usa':
+        # For ease of use, we're excluding Hawaii and Alaska
+        map = gpd.read_file(os.path.join(map_path, 's_22mr22.shp'))
+        map = map[map.STATE != 'AK']
+        map = map[map.STATE != 'HI']
+    else:
+        map = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    fig, ax = plt.subplots(figsize=(12, 6))
+    map.plot(color="lightgrey", ax=ax)
+
+    # If color_var was specified, then reassign itself to the series corresponding to df[color_var]
+    if color_var:
+        # Specifically clean based on this row to remove NaN values
+        df = df.dropna(axis=0, subset=[color_var])
+        df = df.reset_index(drop=True)
+
+        # Remove outliers that are more than 3 standard dev's away from the mean
+        # Based on https://stackoverflow.com/questions/23199796/detect-and-exclude-outliers-in-a-pandas-dataframe
+        if elim_outliers:
+            # This is off by default
+            df = df[(np.abs(stats.zscore(df[color_var])) < 3)]
+
+        color_var_data = df[color_var]
+
+    plt.scatter(df['longitude'], df['latitude'], s=1, c=color_var_data, cmap=cmap)
+    if color_var:
+        plt.colorbar(label=color_var)
+
+    plt.title(title)
+    plt.xlabel(xtitle)
+    plt.ylabel(ytitle)
+
+    # If the region was the US, apply axis limits
+    if region == 'usa':
+        plt.xlim([-125, -65])
+        plt.ylim([24, 50])
+
+    plt.savefig(os.path.join(save_image_path, save_name))
+
+def filter_usa(df: pd.DataFrame) -> pd.DataFrame:
+    """Takes in world data and crudely restricts to just lat/long values corresponding to the lower 48"""
+
+    # We'll be using latitude bounds of [24, 49] and longitude bounds of [-125, -67] based on https://www.findlatitudeandlongitude.com/l/Lower+48/4315442/
+    filtered = df.loc[(df['latitude'] >= 24) & (df['latitude'] <= 49) & (df['longitude'] >= -125) & (df['longitude'] <= -67)]
+
+    # Also, because 'Murica, let's change the units from C to F
+    filtered['temp_f'] = filtered['temp_c'].apply(lambda x: (x * (9.0 / 5.0) + 32))
+    filtered['dewpoint_f'] = filtered['dewpoint_c'].apply(lambda x: (x * (9.0 / 5.0) + 32))
+
+    return filtered
+
+
+def visualize_conditions(data):
+    # Do some basic cleaning to get rid of rows that are missing lat/long, since that's the bare minimum we need
+    cleaned_data = data.dropna(axis=0, subset=['latitude', 'longitude'])
+    cleaned_data = cleaned_data.reset_index(drop=True)
+    
+    usa_data = filter_usa(cleaned_data)
+
+    # Now store all of the output plots
+    plot_map(usa_data, 'Temperature Across the USA in Fahrenheit', 'usa_temp.png', region='usa', color_var='temp_f', cmap='autumn_r')
+    plot_map(usa_data, 'Dewpoint Temperature Across the USA in Fahrenheit', 'usa_dewpoint.png', region='usa', color_var='dewpoint_f', cmap='autumn_r')
+    plot_map(usa_data, 'Wind Speed in Knots Across the USA', 'usa_wind_speed.png', region='usa', color_var='wind_speed_kt', cmap='autumn_r')
+    plot_map(usa_data, 'Visibility Statute in Miles Across the USA', 'usa_visibility.png', region='usa', color_var='visibility_statute_mi', cmap='autumn_r', elim_outliers=True)
 
 def clean_null_rows(given_data):
     #get rid of null rows
@@ -397,6 +482,9 @@ def main():
     np.resize(lat_lon_path, (len(lat_lon_path) + 1, 2))
     lat_lon_path[len(lat_lon_path) - 1] = [lat2, lon2]
     plot_user_final_path(relevant_user_data, lat_lon_path, given_lats, given_lons, 'atlanta_durham_path.png')
+
+    # Use the given data to generate visualizations over the lower 48
+    visualize_conditions(given_data)
 
 if __name__ == "__main__":
     main()
