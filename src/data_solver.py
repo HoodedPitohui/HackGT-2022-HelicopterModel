@@ -297,6 +297,27 @@ def get_path_cost(penalty_graph, best_path):
         cost = cost + penalty_graph[best_path[i]]
     return cost
 
+def get_lat_lons_from_path(best_path, lat_lon_data, lat_len, long_len):
+    lat_lon_table = np.empty((len(best_path), 2))
+    for i in range(0, len(best_path)):
+        temp = np.asarray(best_path[i])
+        row_num = temp[0] * long_len + temp[1]
+        lat_lon_table[i, 0] = lat_lon_data[row_num, 0]
+        lat_lon_table[i, 1] = lat_lon_data[row_num, 1]
+    
+    return lat_lon_table
+
+def plot_user_final_path(given_data, path_data, given_lats, given_lons, save_name):
+    plt.scatter(given_data['longitude'], given_data['latitude'], s = 0.5)
+    plt.scatter(given_lons, given_lats, s = 20)
+    plt.plot(path_data[:, 1], path_data[:, 0])
+    plt.xlabel('longitude')
+    plt.ylabel('latitude')
+    plt.title('Helicopter from Atlanta, GA to Durham, NC')
+    plt.savefig(os.path.join(save_image_path, save_name))
+    plt.close()
+    x = 8
+
 def main():
     given_data = parse_data(save_path)
     #plot_data_world(given_data, 'initial_lat_lon.png')
@@ -327,6 +348,8 @@ def main():
     diag_path_cost, diag_path, penalty_graph = calc_diag_penalty(weighted_risk_matrix, long_length, lat_length)
     best_path= a_star(penalty_graph, long_length, lat_length)
     best_path_cost = get_path_cost(penalty_graph, best_path)
+    lat_lon_path = get_lat_lons_from_path(best_path, weighted_risk_matrix, lat_length, long_length)
+    plot_user_final_path(relevant_user_data, lat_lon_path, given_lats, given_lons, 'atlanta_durham_path.png')
     print('test')
 
 if __name__ == "__main__":
