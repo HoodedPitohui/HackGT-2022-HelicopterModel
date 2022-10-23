@@ -132,7 +132,7 @@ def interpolate_metrics(given_data, point_density, risk_array): #given_data shou
         
             interp_vec[i * long_length + j, 2] = calculate_weighted_risk(neighbor_array, distance_array, risk_array)
 
-    return interp_vec
+    return interp_vec, long_length, lat_length
 
 def calculate_weighted_risk(neighbor_array, distance_array, risk_array):
     weighted_risk = 0
@@ -156,6 +156,44 @@ def find_nearest_neighbors(given_lats, given_lons, lat, lon, num_neighbors):
             neighbor_array[i] = f_index[1]
 
     return neighbor_array, sorted_distances[0: 5]
+
+def convert_weighted_graph(penalty_graph, long_length, lat_length):
+    construction_graph = np.empty((lat_length, long_length))
+    for i in range(0, lat_length):
+        for j in range(0, long_length):
+            construction_graph[i, j] = penalty_graph[i * lat_length + j, 2]
+    return construction_graph
+
+def a_star(given_penalties, long_length, lat_length):
+    construction_graph_costs = convert_weighted_graph(given_penalties, long_length, lat_length)
+    #assume the goal is to essentially solve a diagonal line problem
+    starting_node = np.asarray([0, 0])
+    ending_node = np.asarray([lat_length - 1, long_length - 1])
+
+    #calculate the diagonal-safety-cost
+    diag_safety_cost = 0
+    final_pos_counter = 0
+    if (long_length > lat_length):
+        diag_path = np.empty([long_length, 2])
+        for i in range(0, lat_length):
+            diag_safety_cost = diag_safety_cost + construction_graph_costs[i, i]
+            diag_path[i] = [i, i]
+            final_pos_counter += 1
+        for  i in range(final_pos_counter, long_length):
+            diag_safety_cost = diag_safety_cost + construction_graph_costs[final_pos_counter - 1, i]
+            diag_path[i] = [i, final_pos_counter]
+    else:
+        diag_path = np.empty([lat_length, 2])
+        for i in range(0, lon_length):
+            diag_safety_cost = diag_safety_cost + construction_graph_costs[i, i]
+            diag_path[i] = [i, i]
+            final_pos_counter += 1
+        for i in range(final_pos_counter, lat_length):
+            diag_safety_cost = diag_safety_cost + construction_graph_costs[i, final_pos_counter]
+            diag_path[i] = [final_pos_counter, i]
+
+    return diag_safety_cost, diag_path
+
 
 def main():
     given_data = parse_data(save_path)
@@ -183,8 +221,8 @@ def main():
     risk_array = generate_risk_assessments(relevant_user_data, np.asarray(relevant_user_data['wind_speed_kt']), 
                                             np.asarray(relevant_user_data['temp_c']), 
                                             np.asarray(relevant_user_data['dewpoint_c']))
-    weighted_risk_matrix = interpolate_metrics(relevant_user_data, 0.01, risk_array)
-    interpolate_metrics(given_data, 0.01)
+    weighted_risk_matrix, long_length, lat_length = interpolate_metrics(relevant_user_data, 0.1, risk_array)
+    diag_path_cost, diag_path = a_star(weighted_risk_matrix, long_length, lat_length)
 
 if __name__ == "__main__":
     main()
