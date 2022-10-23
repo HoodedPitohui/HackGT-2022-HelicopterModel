@@ -9,9 +9,11 @@ import geopandas as gpd
 from geopandas import GeoDataFrame
 from scipy.interpolate import interp1d
 import heapq
+import pickle
 
 
 save_path = os.path.join("data")
+src_path = os.path.join("src")
 save_image_path = os.path.join("saved_figures")
 
 class Node:
@@ -148,9 +150,23 @@ def find_relevant_points(given_data, user_lats, user_lons):
     return relevant_data
 
 def generate_risk_assessments(given_data, wind_speed, temp_c, dewpoint_c):
+    # Glorious risk model
+    model_path = os.path.join(src_path, 'model.pickle')
+    model = pickle.load(open(model_path, 'rb'))
+
+    inputs = given_data['visibility_statute_mi']
+    
     risk_array = np.empty((len(given_data), 1))
     for i in range(0, len(given_data)):
-        risk_array[i] = wind_speed[i] ** 2 + temp_c[i] ** (1/2) + abs(dewpoint_c[i]) ** (1/2)
+        # Get prediction for this data entry
+        prediction = model.predict(pd.DataFrame([float(inputs.iloc[i])], columns=['visibility_statute_mi']))
+
+        # Assign risk based on prediction
+        if prediction == 'SPECI':
+            risk_array[i] = 500
+        else:
+            risk_array[i] = 0
+        
     return risk_array
 
 def interpolate_metrics(given_data, point_density, risk_array): #given_data should be sorted ascending in altitude
@@ -307,7 +323,7 @@ def get_lat_lons_from_path(best_path, lat_lon_data, lat_len, long_len):
     
     return lat_lon_table
 
-def plot_user_final_path(given_data, path_data, given_lats, given_lons, save_name):
+def plot_user_final_path(given_data, path_data, given_lats, given_lons, save_name, lat2, lon2):
     plt.scatter(given_data['longitude'], given_data['latitude'], s = 0.5)
     plt.scatter(given_lons, given_lats, s = 20)
     plt.plot(path_data[:, 1], path_data[:, 0])
@@ -349,7 +365,7 @@ def main():
     best_path= a_star(penalty_graph, long_length, lat_length)
     best_path_cost = get_path_cost(penalty_graph, best_path)
     lat_lon_path = get_lat_lons_from_path(best_path, weighted_risk_matrix, lat_length, long_length)
-    plot_user_final_path(relevant_user_data, lat_lon_path, given_lats, given_lons, 'atlanta_durham_path.png')
+    plot_user_final_path(relevant_user_data, lat_lon_path, given_lats, given_lons, 'atlanta_durham_path.png', lat2, lon2)
     print('test')
 
 if __name__ == "__main__":
