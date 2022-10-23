@@ -1,8 +1,3 @@
-No errors
-No warnings
-319 ms
-data source=metars
-4772 results
 raw_text,station_id,observation_time,latitude,longitude,temp_c,dewpoint_c,wind_dir_degrees,wind_speed_kt,wind_gust_kt,visibility_statute_mi,altim_in_hg,sea_level_pressure_mb,corrected,auto,auto_station,maintenance_indicator_on,no_signal,lightning_sensor_off,freezing_rain_sensor_off,present_weather_sensor_off,wx_string,sky_cover,cloud_base_ft_agl,sky_cover,cloud_base_ft_agl,sky_cover,cloud_base_ft_agl,sky_cover,cloud_base_ft_agl,flight_category,three_hr_pressure_tendency_mb,maxT_c,minT_c,maxT24hr_c,minT24hr_c,precip_in,pcp3hr_in,pcp6hr_in,pcp24hr_in,snow_in,vert_vis_ft,metar_type,elevation_m
 TJBQ 230050Z 10005KT 10SM SCT020 SCT026 SCT033 24/23 A2993,TJBQ,2022-10-23T00:50:00Z,18.5,-67.13,24.0,23.0,100,5,,10.0,29.929134,,,,,,,,,,,SCT,2000,SCT,2600,SCT,3300,,,VFR,,,,,,,,,,,,METAR,69.0
 PGRO 230050Z 09015KT 7SM VCSH FEW014 SCT070 BKN100 28/25 A2984 RMK VCSH W,PGRO,2022-10-23T00:50:00Z,14.18,145.25,28.0,25.0,90,15,,7.0,29.840551,,,,,,,,,,VCSH,FEW,1400,SCT,7000,BKN,10000,,,VFR,,,,,,,,,,,,METAR,181.0
