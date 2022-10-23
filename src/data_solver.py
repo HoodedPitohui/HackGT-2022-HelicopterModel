@@ -11,12 +11,13 @@ from scipy.interpolate import interp1d
 import heapq
 import pickle
 
-
+#default save paths
 save_path = os.path.join("data")
 src_path = os.path.join("src")
 save_image_path = os.path.join("saved_figures")
 
 class Node:
+    #Used for A-star algorithm
     #credit: https://gist.github.com/ryancollingwood/32446307e976a11a1185a5394d6657bc
     """
     A node class for A* Pathfinding
@@ -55,6 +56,8 @@ def return_path(current_node):
 
 
 def parse_data(given_path):
+
+    #load in data
     file_name = 'metars_cache_1.csv'
     metars_path = os.path.join(given_path, file_name)
     metars_data = pd.read_csv(metars_path)
@@ -63,6 +66,7 @@ def parse_data(given_path):
     return metars_data
 
 def clean_null_rows(given_data):
+    #get rid of null rows
     cleaned_data = given_data.copy()
     cleaned_data.dropna(subset = ['temp_c'], inplace = True)
     cleaned_data.dropna(subset = ['dewpoint_c'], inplace = True)
@@ -70,6 +74,7 @@ def clean_null_rows(given_data):
     return cleaned_data
 
 def get_na_data(given_data):
+    #get data in NA
     na_data = given_data[given_data.latitude > 31]
     na_data = na_data[na_data.latitude < 51]
     na_data = na_data[na_data.longitude > -180]
@@ -77,6 +82,8 @@ def get_na_data(given_data):
     return na_data
 
 def geoplot_data_world(given_data, save_name):
+    #use geoplot for preliminary mapping
+
     geometry = [Point(xy) for xy in zip(given_data['longitude'], given_data['latitude'])]
     gdf = GeoDataFrame(given_data, geometry=geometry)   
     #this is a simple map that goes with geopandas
@@ -84,7 +91,7 @@ def geoplot_data_world(given_data, save_name):
     gdf.plot(ax=world.plot(figsize=(10, 6)), marker='o', color='red', markersize=0.5)
     plt.savefig(os.path.join(save_image_path, save_name))
 
-def plot_data_usa(given_data):
+def plot_data_usa(given_data): #get a rough approximation of the USA
     f1 = plt.scatter(given_data['longitude'], given_data['latitude'], s = 0.5,
                 c = given_data['temp_c'])
     plt.xlabel('longitude (degrees)')
@@ -130,7 +137,8 @@ def plot_data_usa(given_data):
     plt.savefig(os.path.join(save_image_path, 'visibility_usa.png'))
     cb5.remove()
 
-def plot_user_points(given_data, given_lats, given_lons, save_name):
+def plot_user_points(given_data, given_lats, given_lons, save_name): 
+    #plot a user given dataset and save
     plt.scatter(given_data['longitude'], given_data['latitude'], s = 0.5)
     plt.scatter(given_lons, given_lats, s = 20)
     plt.savefig(os.path.join(save_image_path, save_name))
@@ -138,6 +146,7 @@ def plot_user_points(given_data, given_lats, given_lons, save_name):
     #plt.show()
 
 def find_relevant_points(given_data, user_lats, user_lons):
+    #find points within the boundaries of what the user specified as their latitude annd longitude coordinates
     max_lat = max(user_lats)
     min_lat = min(user_lats)
     max_lon = max(user_lons)
@@ -197,6 +206,7 @@ def calculate_weighted_risk(neighbor_array, distance_array, risk_array):
     return weighted_risk
     
 def find_nearest_neighbors(given_lats, given_lons, lat, lon, num_neighbors):
+
     distances = np.empty((1, len(given_lats)))
     for i in range(0, len(given_lats)):
         distances[0, i] = ((lat - given_lats[i]) **2 + (lon - given_lons[i]) **2) **(1/2)
@@ -220,8 +230,8 @@ def convert_weighted_graph(penalty_graph, long_length, lat_length):
     return construction_graph
 
 def calc_diag_penalty(given_penalties, long_length, lat_length):
+    #get a penalty for the simplest action
     construction_graph_costs = convert_weighted_graph(given_penalties, long_length, lat_length)
-    #assume the goal is to essentially solve a diagonal line problem
     starting_node = np.asarray([0, 0])
     ending_node = np.asarray([lat_length - 1, long_length - 1])
 
@@ -250,6 +260,7 @@ def calc_diag_penalty(given_penalties, long_length, lat_length):
     return diag_safety_cost, diag_path, construction_graph_costs
 
 def a_star(penalty_graph, long_length, lat_length):
+    #a-star for best pathing
     #credit: https://gist.github.com/ryancollingwood/32446307e976a11a1185a5394d6657bc
     #assumption, bottom left = start, end is top right
     start = (0, 0)
@@ -308,12 +319,15 @@ def a_star(penalty_graph, long_length, lat_length):
     
 
 def get_path_cost(penalty_graph, best_path):
+
+    #get path cost from given actions
     cost = 0
     for i in range(0, len(best_path)):
         cost = cost + penalty_graph[best_path[i]]
     return cost
 
 def get_lat_lons_from_path(best_path, lat_lon_data, lat_len, long_len):
+    #generate latitudes and longitudes for the solution to A*
     lat_lon_table = np.empty((len(best_path), 2))
     for i in range(0, len(best_path)):
         temp = np.asarray(best_path[i])
@@ -323,7 +337,7 @@ def get_lat_lons_from_path(best_path, lat_lon_data, lat_len, long_len):
     
     return lat_lon_table
 
-def plot_user_final_path(given_data, path_data, given_lats, given_lons, save_name, lat2, lon2):
+def plot_user_final_path(given_data, path_data, given_lats, given_lons, save_name):
     plt.scatter(given_data['longitude'], given_data['latitude'], s = 0.5)
     plt.scatter(given_lons, given_lats, s = 20)
     plt.plot(path_data[:, 1], path_data[:, 0])
@@ -365,7 +379,9 @@ def main():
     best_path= a_star(penalty_graph, long_length, lat_length)
     best_path_cost = get_path_cost(penalty_graph, best_path)
     lat_lon_path = get_lat_lons_from_path(best_path, weighted_risk_matrix, lat_length, long_length)
-    plot_user_final_path(relevant_user_data, lat_lon_path, given_lats, given_lons, 'atlanta_durham_path.png', lat2, lon2)
+    np.resize(lat_lon_path, (len(lat_lon_path) + 1, 2))
+    lat_lon_path[len(lat_lon_path) - 1] = [lat2, lon2]
+    plot_user_final_path(relevant_user_data, lat_lon_path, given_lats, given_lons, 'atlanta_durham_path.png')
     print('test')
 
 if __name__ == "__main__":
