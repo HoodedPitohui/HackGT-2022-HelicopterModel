@@ -8,10 +8,49 @@ from shapely.geometry import Point
 import geopandas as gpd
 from geopandas import GeoDataFrame
 from scipy.interpolate import interp1d
+import heapq
 
 
 save_path = os.path.join("data")
 save_image_path = os.path.join("saved_figures")
+
+class Node:
+    #credit: https://gist.github.com/ryancollingwood/32446307e976a11a1185a5394d6657bc
+    """
+    A node class for A* Pathfinding
+    """
+
+    def __init__(self, parent=None, position=None):
+        self.parent = parent
+        self.position = position
+
+        self.g = 0
+        self.h = 0
+        self.f = 0
+
+    def __eq__(self, other):
+        return self.position == other.position
+    
+    def __repr__(self):
+      return f"{self.position} - g: {self.g} h: {self.h} f: {self.f}"
+
+    # defining less than for purposes of heap queue
+    def __lt__(self, other):
+      return self.f < other.f
+    
+    # defining greater than for purposes of heap queue
+    def __gt__(self, other):
+      return self.f > other.f
+
+def return_path(current_node):
+    path = []
+    current = current_node
+    while current is not None:
+        path.append(current.position)
+        current = current.parent
+    return path[::-1]  # Return reversed path
+
+
 
 def parse_data(given_path):
     file_name = 'metars_cache_1.csv'
@@ -164,7 +203,7 @@ def convert_weighted_graph(penalty_graph, long_length, lat_length):
             construction_graph[i, j] = penalty_graph[i * lat_length + j, 2]
     return construction_graph
 
-def a_star(given_penalties, long_length, lat_length):
+def calc_diag_penalty(given_penalties, long_length, lat_length):
     construction_graph_costs = convert_weighted_graph(given_penalties, long_length, lat_length)
     #assume the goal is to essentially solve a diagonal line problem
     starting_node = np.asarray([0, 0])
@@ -192,8 +231,71 @@ def a_star(given_penalties, long_length, lat_length):
             diag_safety_cost = diag_safety_cost + construction_graph_costs[i, final_pos_counter]
             diag_path[i] = [final_pos_counter, i]
 
-    return diag_safety_cost, diag_path
+    return diag_safety_cost, diag_path, construction_graph_costs
 
+def a_star(penalty_graph, long_length, lat_length):
+    #credit: https://gist.github.com/ryancollingwood/32446307e976a11a1185a5394d6657bc
+    #assumption, bottom left = start, end is top right
+    start = (0, 0)
+    end = (lat_length - 1, long_length - 1)
+
+    start_node = Node(None, start)
+    start_node.g = start_node.h = start_node.f = 0
+    end_node = Node(None, end)
+    end_node.g = end_node.h = end_node.f = 0
+
+    open_list = []
+    closed_list = []
+
+    heapq.heapify(open_list)
+    heapq.heappush(open_list, start_node)
+
+    outer_iterations = 0
+    max_iterations = (len(penalty_graph[0]) * len(penalty_graph))
+    adjacent_squares = ((0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1),)
+
+    while len(open_list) > 0:
+        outer_iterations += 1
+        if outer_iterations > max_iterations:
+            return return_path(current_node)
+
+        current_node = heapq.heappop(open_list)
+        closed_list.append(current_node)
+
+        if current_node == end_node:
+            return return_path(current_node)
+        
+        children = []
+
+        for new_position in adjacent_squares:
+            node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
+
+            if node_position[0] > (len(penalty_graph) - 1) or node_position[0] < 0 or node_position[1] > (len(penalty_graph[len(penalty_graph)-1]) -1) or node_position[1] < 0:
+                continue
+
+            new_node = Node(current_node, node_position)
+
+            children.append(new_node)
+        
+        for child in children:
+            if len([closed_child for closed_child in closed_list if closed_child == child]) > 0:
+                continue
+            
+            child.g = current_node.g + penalty_graph[child.position[0], child.position[1]]
+            child.h = ((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2)
+            child.f = child.g + child.h
+
+            if len([open_node for open_node in open_list if child.position == open_node.position and child.g > open_node.g]) > 0:
+                continue
+
+            heapq.heappush(open_list, child)
+    
+
+def get_path_cost(penalty_graph, best_path):
+    cost = 0
+    for i in range(0, len(best_path)):
+        cost = cost + penalty_graph[best_path[i]]
+    return cost
 
 def main():
     given_data = parse_data(save_path)
@@ -222,7 +324,10 @@ def main():
                                             np.asarray(relevant_user_data['temp_c']), 
                                             np.asarray(relevant_user_data['dewpoint_c']))
     weighted_risk_matrix, long_length, lat_length = interpolate_metrics(relevant_user_data, 0.1, risk_array)
-    diag_path_cost, diag_path = a_star(weighted_risk_matrix, long_length, lat_length)
+    diag_path_cost, diag_path, penalty_graph = calc_diag_penalty(weighted_risk_matrix, long_length, lat_length)
+    best_path= a_star(penalty_graph, long_length, lat_length)
+    best_path_cost = get_path_cost(penalty_graph, best_path)
+    print('test')
 
 if __name__ == "__main__":
     main()
