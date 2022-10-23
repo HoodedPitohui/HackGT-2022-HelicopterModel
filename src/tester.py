@@ -1,9 +1,3 @@
-import os
-import pickle
+import urllib.request
 
-print(os.path.abspath(os.path.join(os.pardir, 'src', 'model.pickle')))
-# binFile = open(os.path.abspath(os.path.join(os.pardir, 'src', 'model.pickle')))
-# model = pickle.load(binFile, 'rb')
-# print(model)
-
-open(os.path.abspath(os.path.join(os.pardir, 'src', 'junk.py')))
+urllib.request.urlretrieve("https://www.aviationweather.gov/adds/dataserver_current/current/metars.cache.csv", "metars.cache.csv")

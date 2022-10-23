@@ -172,7 +172,7 @@ def generate_risk_assessments(given_data, wind_speed, temp_c, dewpoint_c):
 
         # Assign risk based on prediction
         if prediction == 'SPECI':
-            risk_array[i] = 500
+            risk_array[i] = 300
         else:
             risk_array[i] = 0
         
@@ -202,7 +202,7 @@ def calculate_weighted_risk(neighbor_array, distance_array, risk_array):
     weighted_risk = 0
     for i in range(0, len(neighbor_array)):
         test = neighbor_array[i]
-        weighted_risk = weighted_risk + risk_array[int(neighbor_array[i])] / (distance_array[0, i] ** 2 + 1)
+        weighted_risk = weighted_risk + risk_array[int(neighbor_array[i])] / (distance_array[0, i] ** 1.25 + 1)
     return weighted_risk
     
 def find_nearest_neighbors(given_lats, given_lons, lat, lon, num_neighbors):
@@ -249,7 +249,7 @@ def calc_diag_penalty(given_penalties, long_length, lat_length):
             diag_path[i] = [i, final_pos_counter]
     else:
         diag_path = np.empty([lat_length, 2])
-        for i in range(0, lon_length):
+        for i in range(0, long_length):
             diag_safety_cost = diag_safety_cost + construction_graph_costs[i, i]
             diag_path[i] = [i, i]
             final_pos_counter += 1
@@ -360,7 +360,6 @@ def main():
     #get the data in the USA
     plot_data_usa(na_data)
     #plot_data_united_states(cleaned_data)
-    print('test')
 
     #pick two points and find useful datapoints from there
     lat1, lon1 = 33.7490, -84.3880
@@ -382,7 +381,6 @@ def main():
     np.resize(lat_lon_path, (len(lat_lon_path) + 1, 2))
     lat_lon_path[len(lat_lon_path) - 1] = [lat2, lon2]
     plot_user_final_path(relevant_user_data, lat_lon_path, given_lats, given_lons, 'atlanta_durham_path.png')
-    print('test')
 
 if __name__ == "__main__":
     main()
